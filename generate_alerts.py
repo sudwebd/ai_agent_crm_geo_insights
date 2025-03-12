@@ -1,35 +1,41 @@
-import logging
-import json
-import os
 import base64
-
-from generate_llm_insights import generate_llm_insights
-from googleapiclient.discovery import build
+import logging
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from utils.google_authentication import *
+from googleapiclient.discovery import build
+from utils.google_authentication import oauth_2_authentication_flow
 
 RECIPIENT_EMAIL = "sambharya88@gmail.com"
 
-# Set up logging
-logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger(__name__)
+class AlertGenerator:
+    def __init__(self, logger_instance: logging.Logger):
+        self.logger = logger_instance
 
-class generate_alerts():
-    def __init__(self, logger):
-        self.logger = logger
+    def gmail_alert(self, body_html: str) -> None:
+        try:
+            self.logger.info("Starting gmail alert process.")
+            gmail_service = self._authenticate_gmail()
+            message = self._create_email_message(body_html)
+            
+            gmail_service.users().messages().send(
+                userId="me", 
+                body={"raw": message}
+            ).execute()
+            
+            self.logger.info("Email sent successfully.")
+        except Exception as e:
+            self.logger.error(f"Failed to send email: {str(e)}")
+            raise
 
-    def gmail_alert(self, body_html: str):
-        self.logger.info("Starting gmail alert process.")
-        gmail = self._authenticate_gmail()
+    def _create_email_message(self, body_html: str) -> str:
         message = MIMEMultipart()
         message["to"] = RECIPIENT_EMAIL
         message["subject"] = "AI Customer Data Insights Alert"
         message.attach(MIMEText(body_html, "html"))
-        raw_message = base64.urlsafe_b64encode(message.as_bytes()).decode("utf-8")
-        self.logger.debug("Sending email via Gmail API.")
-        gmail.users().messages().send(userId="me", body={"raw": raw_message}).execute()
-        self.logger.info("Email sent successfully.")
+        
+        return base64.urlsafe_b64encode(
+            message.as_bytes()
+        ).decode("utf-8")
 
-    def _authenticate_gmail(self):
+    def _authenticate_gmail(self) -> build:
         return build("gmail", "v1", credentials=oauth_2_authentication_flow())

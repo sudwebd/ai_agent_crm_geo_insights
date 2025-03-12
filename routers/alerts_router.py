@@ -1,8 +1,8 @@
 from fastapi import FastAPI, APIRouter, Depends, HTTPException, Request
 from typing import Optional
 from fetch_and_process_data import ProcessCustomerData
-from generate_llm_insights import generate_llm_insights
-from generate_alerts import generate_alerts
+from generate_llm_insights import GenerateLLMInsights
+from generate_alerts import AlertGenerator
 from utils.constants import FULL_PROMPT
 import pandas as pd
 import json
@@ -22,18 +22,18 @@ def get_processor(request: Request):
     return ProcessCustomerData(request.app.state.logger)
 
 def get_llm(request: Request):
-    return generate_llm_insights(request.app.state.logger)
+    return GenerateLLMInsights(request.app.state.logger)
 
 def get_alerts(request: Request):
-    return generate_alerts(request.app.state.logger)
+    return AlertGenerator(request.app.state.logger)
 
 @router.post("/get_insights_alerts")
 async def get_insights_alerts(
     request: Request,
     prompt: Optional[str] = FULL_PROMPT,
     processor: ProcessCustomerData = Depends(get_processor), 
-    llm: generate_llm_insights = Depends(get_llm), 
-    alerts: generate_alerts = Depends(get_alerts),
+    llm: GenerateLLMInsights = Depends(get_llm), 
+    alerts: AlertGenerator = Depends(get_alerts),
     
 ):
     logger = request.app.state.logger
