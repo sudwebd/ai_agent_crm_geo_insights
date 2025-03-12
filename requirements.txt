@@ -1,0 +1,11 @@
+gspread
+google-auth-oauthlib
+google-auth
+pandas
+numpy
+tqdm
+requests
+fastapi
+uvicorn
+openai
+google-api-python-client
