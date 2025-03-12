@@ -1,16 +1,11 @@
-import logging
-import json
-import pandas as pd
-from fastapi import FastAPI, APIRouter, Depends, HTTPException
+from fastapi import FastAPI, APIRouter, Depends, HTTPException, Request
 from typing import Optional
 from fetch_and_process_data import ProcessCustomerData
 from generate_llm_insights import generate_llm_insights
 from generate_alerts import generate_alerts
-from keys.constants import FULL_PROMPT
-
-# Configure logging with default level DEBUG
-logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger(__name__)
+from utils.constants import FULL_PROMPT
+import pandas as pd
+import json
 
 app = FastAPI(
     title="AI Insights Alerting System",
@@ -23,22 +18,25 @@ router = APIRouter(prefix="/ai_insight_alerts", tags=["AI Insights Alerts"])
 # MODEL = "deepseek/deepseek-r1:free"
 MODEL = "google/gemini-2.0-flash-thinking-exp:free"
 
-def get_processor():
-    return ProcessCustomerData()
+def get_processor(request: Request):
+    return ProcessCustomerData(request.app.state.logger)
 
-def get_llm():
-    return generate_llm_insights()
+def get_llm(request: Request):
+    return generate_llm_insights(request.app.state.logger)
 
-def get_alerts():
-    return generate_alerts()
+def get_alerts(request: Request):
+    return generate_alerts(request.app.state.logger)
 
 @router.post("/get_insights_alerts")
 async def get_insights_alerts(
+    request: Request,
     prompt: Optional[str] = FULL_PROMPT,
     processor: ProcessCustomerData = Depends(get_processor), 
     llm: generate_llm_insights = Depends(get_llm), 
-    alerts: generate_alerts = Depends(get_alerts)
+    alerts: generate_alerts = Depends(get_alerts),
+    
 ):
+    logger = request.app.state.logger
     logger.debug("Received request to generate insights alerts.")
     try:
         # Step 1: Fetch and process customer data
@@ -56,11 +54,17 @@ async def get_insights_alerts(
             prompt=prompt,
             content=json.dumps(data.to_string(), indent=2)
         )
+
         logger.debug("LLM generated insights.")
         
         # Step 3: Generate alerts
         logger.debug("Generating alerts.")
-        alerts_response = alerts.gmail_alert(llm.extract_html(insights))
+        html_str = llm.extract_html(insights)
+        if not html_str:
+            logger.error("No HTML content found in insights.")
+            raise Exception(detail="Failure: No insights found in HTML format")
+        
+        alerts_response = alerts.gmail_alert(insights)
         logger.debug("Alerts generated successfully.")
         
         logger.info("Successfully generated insights alerts.")

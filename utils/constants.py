@@ -1,3 +1,7 @@
+CREDENTIALS = "keys/credentials.json"
+TOKENS = "keys/tokens.json"
+SCOPES = ["https://www.googleapis.com/auth/spreadsheets.readonly", "https://www.googleapis.com/auth/drive", "https://www.googleapis.com/auth/gmail.send"]
+
 ANALYSIS_PROMPT = """
 I have a dataset containing customer purchase data with the following columns:
 - Customer Name

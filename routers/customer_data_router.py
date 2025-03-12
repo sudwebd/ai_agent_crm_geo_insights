@@ -1,10 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fetch_and_process_data import ProcessCustomerData
 
 router = APIRouter(prefix="/customer_data", tags=["Customer Data"])
 
-def get_processor():
-    return ProcessCustomerData()
+def get_processor(request: Request):
+    return ProcessCustomerData(request.app.state.logger)
 
 @router.get("/processed_data")
 def get_processed_data(processor: ProcessCustomerData = Depends(get_processor)):
